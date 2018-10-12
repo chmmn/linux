@@ -26,6 +26,7 @@
 #include <asm/tlbflush.h>
 #include <linux/mm_types.h>
 
+#ifdef CONFIG_MMU
 #ifdef CONFIG_64BIT
 #include <asm/pgtable-64.h>
 #else
@@ -423,6 +424,10 @@ static inline void pgtable_cache_init(void)
 #define TASK_SIZE (PGDIR_SIZE * PTRS_PER_PGD / 2)
 #else
 #define TASK_SIZE VMALLOC_START
+#endif
+
+#else /* CONFIG_MMU */
+#include <asm/pgtable-nommu.h>
 #endif
 
 #include <asm-generic/pgtable.h>

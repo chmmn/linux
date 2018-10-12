@@ -23,11 +23,22 @@
  * per hart on all RISC-V systems.
  */
 
+#ifdef CONFIG_MACHINE_MODE
+#define mtime_ptr (volatile uint64_t*)(0x0200bff8)
+#define mtimecmp_ptr (volatile uint64_t*)(0x02004000)
+#endif
+
 static int riscv_clock_next_event(unsigned long delta,
 		struct clock_event_device *ce)
 {
+#ifdef CONFIG_MACHINE_MODE
+	*mtimecmp_ptr = *mtime_ptr + delta;
+	csr_clear(mip, MIP_MTIP);
+	csr_set(mie, MIE_MTIE);
+#else
 	csr_set(sie, SIE_STIE);
 	sbi_set_timer(get_cycles64() + delta);
+#endif
 	return 0;
 }
 
@@ -45,7 +56,11 @@ static DEFINE_PER_CPU(struct clock_event_device, riscv_clock_event) = {
  */
 static unsigned long long riscv_clocksource_rdtime(struct clocksource *cs)
 {
+#ifdef CONFIG_MACHINE_MODE
+	return *mtime_ptr;
+#else
 	return get_cycles64();
+#endif
 }
 
 static DEFINE_PER_CPU(struct clocksource, riscv_clocksource) = {
@@ -62,14 +77,21 @@ static int riscv_timer_starting_cpu(unsigned int cpu)
 
 	ce->cpumask = cpumask_of(cpu);
 	clockevents_config_and_register(ce, riscv_timebase, 100, 0x7fffffff);
-
+#ifdef CONFIG_MACHINE_MODE
+	csr_set(mie, MIE_MTIE);
+#else
 	csr_set(sie, SIE_STIE);
+#endif
 	return 0;
 }
 
 static int riscv_timer_dying_cpu(unsigned int cpu)
 {
+#ifdef CONFIG_MACHINE_MODE
+	csr_clear(mie, MIE_MTIE);
+#else
 	csr_clear(sie, SIE_STIE);
+#endif
 	return 0;
 }
 
@@ -77,8 +99,11 @@ static int riscv_timer_dying_cpu(unsigned int cpu)
 void riscv_timer_interrupt(void)
 {
 	struct clock_event_device *evdev = this_cpu_ptr(&riscv_clock_event);
-
+#ifdef CONFIG_MACHINE_MODE
+	csr_clear(mie, MIE_MTIE);
+#else
 	csr_clear(sie, SIE_STIE);
+#endif
 	evdev->event_handler(evdev);
 }
 

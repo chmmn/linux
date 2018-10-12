@@ -35,6 +35,7 @@
 
 #ifndef __ASSEMBLY__
 
+#ifdef CONFIG_MMU
 #define PAGE_UP(addr)	(((addr)+((PAGE_SIZE)-1))&(~((PAGE_SIZE)-1)))
 #define PAGE_DOWN(addr)	((addr)&(~((PAGE_SIZE)-1)))
 
@@ -80,6 +81,10 @@ typedef struct page *pgtable_t;
 #define __pgd(x)	((pgd_t) { (x) })
 #define __pgprot(x)	((pgprot_t) { (x) })
 
+#else /* CONFIG_MMU */
+#include <asm/page-nommu.h>
+#endif /* CONFIG_MMU */
+
 #ifdef CONFIG_64BITS
 #define PTE_FMT "%016lx"
 #else
@@ -123,8 +128,10 @@ extern unsigned long min_low_pfn;
 #include <asm-generic/memory_model.h>
 #include <asm-generic/getorder.h>
 
+#ifdef CONFIG_MMU
 /* vDSO support */
 /* We do define AT_SYSINFO_EHDR but don't use the gate mechanism */
 #define __HAVE_ARCH_GATE_AREA
+#endif
 
 #endif /* _ASM_RISCV_PAGE_H */

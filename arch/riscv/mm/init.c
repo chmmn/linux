@@ -38,7 +38,9 @@ static void __init zone_sizes_init(void)
 
 void setup_zero_page(void)
 {
+#ifdef CONFIG_MMU
 	memset((void *)empty_zero_page, 0, PAGE_SIZE);
+#endif
 }
 
 void __init paging_init(void)

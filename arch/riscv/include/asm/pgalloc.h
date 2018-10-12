@@ -18,6 +18,7 @@
 #include <linux/mm.h>
 #include <asm/tlb.h>
 
+#ifdef CONFIG_MMU
 static inline void pmd_populate_kernel(struct mm_struct *mm,
 	pmd_t *pmd, pte_t *pte)
 {
@@ -116,6 +117,8 @@ do {                                    \
 	pgtable_page_dtor(pte);         \
 	tlb_remove_page((tlb), pte);    \
 } while (0)
+
+#endif /* CONFIG_MMU */
 
 static inline void check_pgt_cache(void)
 {

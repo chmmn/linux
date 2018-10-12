@@ -46,7 +46,19 @@ config RISCV
 	select ARCH_HAS_PTE_SPECIAL
 
 config MMU
-	def_bool y
+	bool "MMU-based Paged Memory Management Support"
+	default y
+	help
+	  Select if you want MMU-based virtualised addressing space
+	  support by paged memory management. If unsure, say 'Y'.
+
+config MACHINE_MODE
+	bool "M-mode Kernel"
+	default n
+
+config NO_FPU
+	bool "No floating point Extension"
+	default n
 
 config ZONE_DMA32
 	bool
@@ -54,6 +66,8 @@ config ZONE_DMA32
 
 config PAGE_OFFSET
 	hex
+	default 0x80000000 if MACHINE_MODE
+	default 0x80400000 if !MMU
 	default 0xC0000000 if 32BIT && MAXPHYSMEM_2GB
 	default 0xffffffff80000000 if 64BIT && MAXPHYSMEM_2GB
 	default 0xffffffe000000000 if 64BIT && MAXPHYSMEM_128GB

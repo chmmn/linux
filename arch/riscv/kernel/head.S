@@ -23,7 +23,7 @@
 __INIT
 ENTRY(_start)
 	/* Mask all interrupts */
-	csrw sie, zero
+	csrw CSR_IE, zero
 
 	/* Load the global pointer */
 .option push
@@ -36,7 +36,7 @@ ENTRY(_start)
 	 * floating point in kernel space
 	 */
 	li t0, SR_FS
-	csrc sstatus, t0
+	csrc CSR_STATUS, t0
 
 	/* Pick one hart to run the main boot sequence */
 	la a3, hart_lottery
@@ -44,6 +44,9 @@ ENTRY(_start)
 	amoadd.w a3, a2, (a3)
 	bnez a3, .Lsecondary_start
 
+#ifdef CONFIG_MACHINE_MODE
+	csrw mscratch, x0
+#endif
 	/* Save hart ID and DTB physical address */
 	mv s0, a0
 	mv s1, a1
@@ -51,8 +54,9 @@ ENTRY(_start)
 	/* Initialize page tables and relocate to virtual addresses */
 	la sp, init_thread_union + THREAD_SIZE
 	call setup_vm
+#ifdef CONFIG_MMU
 	call relocate
-
+#endif
 	/* Restore C environment */
 	la tp, init_task
 	sw s0, TASK_TI_CPU(tp)
@@ -67,6 +71,7 @@ ENTRY(_start)
 	call parse_dtb
 	tail start_kernel
 
+#if defined(CONFIG_MMU) && !defined(CONFIG_MACHINE_MODE)
 relocate:
 	/* Relocate return address */
 	li a1, PAGE_OFFSET
@@ -110,6 +115,7 @@ relocate:
 	csrw sptbr, a2
 
 	ret
+#endif
 
 .Lsecondary_start:
 #ifdef CONFIG_SMP

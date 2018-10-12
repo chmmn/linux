@@ -37,11 +37,11 @@
 	 * the kernel thread pointer.  If we came from the kernel, sscratch
 	 * will contain 0, and we should continue on the current TP.
 	 */
-	csrrw tp, sscratch, tp
+	csrrw tp, CSR_SCRATCH, tp
 	bnez tp, _save_context
 
 _restore_kernel_tpsp:
-	csrr tp, sscratch
+	csrr tp, CSR_SCRATCH
 	REG_S sp, TASK_TI_KERNEL_SP(tp)
 _save_context:
 	REG_S sp, TASK_TI_USER_SP(tp)
@@ -87,16 +87,16 @@ _save_context:
 	li t0, SR_SUM | SR_FS
 
 	REG_L s0, TASK_TI_USER_SP(tp)
-	csrrc s1, sstatus, t0
-	csrr s2, sepc
-	csrr s3, sbadaddr
-	csrr s4, scause
-	csrr s5, sscratch
+	csrrc s1, CSR_STATUS, t0
+	csrr s2, CSR_EPC
+	csrr s3, CSR_BADADDR
+	csrr s4, CSR_CAUSE
+	csrr s5, CSR_SCRATCH
 	REG_S s0, PT_SP(sp)
-	REG_S s1, PT_SSTATUS(sp)
-	REG_S s2, PT_SEPC(sp)
-	REG_S s3, PT_SBADADDR(sp)
-	REG_S s4, PT_SCAUSE(sp)
+	REG_S s1, PT_STATUS(sp)
+	REG_S s2, PT_EPC(sp)
+	REG_S s3, PT_BADADDR(sp)
+	REG_S s4, PT_CAUSE(sp)
 	REG_S s5, PT_TP(sp)
 	.endm
 
@@ -105,10 +105,10 @@ _save_context:
  * registers from the stack.
  */
 	.macro RESTORE_ALL
-	REG_L a0, PT_SSTATUS(sp)
-	REG_L a2, PT_SEPC(sp)
-	csrw sstatus, a0
-	csrw sepc, a2
+	REG_L a0, PT_STATUS(sp)
+	REG_L a2, PT_EPC(sp)
+	csrw CSR_STATUS, a0
+	csrw CSR_EPC, a2
 
 	REG_L x1,  PT_RA(sp)
 	REG_L x3,  PT_GP(sp)
@@ -151,7 +151,7 @@ ENTRY(handle_exception)
 	 * Set sscratch register to 0, so that if a recursive exception
 	 * occurs, the exception vector knows it came from the kernel
 	 */
-	csrw sscratch, x0
+	csrw CSR_SCRATCH, x0
 
 	/* Load the global pointer */
 .option push
@@ -172,7 +172,7 @@ ENTRY(handle_exception)
 	tail do_IRQ
 1:
 	/* Exceptions run with interrupts enabled */
-	csrs sstatus, SR_SIE
+	csrs CSR_STATUS, SR_xIE
 
 	/* Handle syscalls */
 	li t0, EXC_SYSCALL
@@ -199,7 +199,7 @@ handle_syscall:
 	 * scall instruction on sret
 	 */
 	addi s2, s2, 0x4
-	REG_S s2, PT_SEPC(sp)
+	REG_S s2, PT_EPC(sp)
 	/* Trace syscalls, but only if requested by the user. */
 	REG_L t0, TASK_TI_FLAGS(tp)
 	andi t0, t0, _TIF_SYSCALL_TRACE
@@ -226,9 +226,14 @@ ret_from_syscall:
 	bnez t0, handle_syscall_trace_exit
 
 ret_from_exception:
-	REG_L s0, PT_SSTATUS(sp)
-	csrc sstatus, SR_SIE
-	andi s0, s0, SR_SPP
+	REG_L s0, PT_STATUS(sp)
+	csrc CSR_STATUS, SR_xIE
+#ifdef CONFIG_MACHINE_MODE
+	srli s0, s0, 8
+	andi s0, s0, 0x18
+#else
+	andi s0, s0, SR_xPP
+#endif
 	bnez s0, restore_all
 
 resume_userspace:
@@ -245,12 +250,15 @@ resume_userspace:
 	 * Save TP into sscratch, so we can find the kernel data structures
 	 * again.
 	 */
-	csrw sscratch, tp
+	csrw CSR_SCRATCH, tp
 
 restore_all:
 	RESTORE_ALL
+#ifdef CONFIG_MACHINE_MODE
+	mret
+#else
 	sret
-
+#endif
 work_pending:
 	/* Enter slow path for supplementary processing */
 	la ra, ret_from_exception
@@ -258,7 +266,7 @@ work_pending:
 	bnez s1, work_resched
 work_notifysig:
 	/* Handle pending signals and notify-resume requests */
-	csrs sstatus, SR_SIE /* Enable interrupts for do_notify_resume() */
+	csrs CSR_STATUS, SR_xIE /* Enable interrupts for do_notify_resume() */
 	move a0, sp /* pt_regs */
 	move a1, s0 /* current_thread_info->flags */
 	tail do_notify_resume
@@ -358,10 +366,11 @@ ENTRY(__switch_to)
 ENDPROC(__switch_to)
 
 ENTRY(__fstate_save)
+#ifndef CONFIG_NO_FPU
 	li  a2,  TASK_THREAD_F0
 	add a0, a0, a2
 	li t1, SR_FS
-	csrs sstatus, t1
+	csrs CSR_STATUS, t1
 	frcsr t0
 	fsd f0,  TASK_THREAD_F0_F0(a0)
 	fsd f1,  TASK_THREAD_F1_F0(a0)
@@ -396,16 +405,18 @@ ENTRY(__fstate_save)
 	fsd f30, TASK_THREAD_F30_F0(a0)
 	fsd f31, TASK_THREAD_F31_F0(a0)
 	sw t0, TASK_THREAD_FCSR_F0(a0)
-	csrc sstatus, t1
+	csrc CSR_STATUS, t1
+#endif
 	ret
 ENDPROC(__fstate_save)
 
 ENTRY(__fstate_restore)
+#ifndef CONFIG_NO_FPU
 	li  a2,  TASK_THREAD_F0
 	add a0, a0, a2
 	li t1, SR_FS
 	lw t0, TASK_THREAD_FCSR_F0(a0)
-	csrs sstatus, t1
+	csrs CSR_STATUS, t1
 	fld f0,  TASK_THREAD_F0_F0(a0)
 	fld f1,  TASK_THREAD_F1_F0(a0)
 	fld f2,  TASK_THREAD_F2_F0(a0)
@@ -439,7 +450,8 @@ ENTRY(__fstate_restore)
 	fld f30, TASK_THREAD_F30_F0(a0)
 	fld f31, TASK_THREAD_F31_F0(a0)
 	fscsr t0
-	csrc sstatus, t1
+	csrc CSR_STATUS, t1
+#endif
 	ret
 ENDPROC(__fstate_restore)
 

@@ -12,7 +12,11 @@
  *   GNU General Public License for more details.
  */
 
+#ifdef CONFIG_MACHINE_MODE
+#define LOAD_OFFSET 0
+#else
 #define LOAD_OFFSET PAGE_OFFSET
+#endif
 #include <asm/vmlinux.lds.h>
 #include <asm/page.h>
 #include <asm/cache.h>
@@ -26,7 +30,11 @@ jiffies = jiffies_64;
 SECTIONS
 {
 	/* Beginning of code and text segment */
+#ifdef CONFIG_MACHINE_MODE
+	. = PAGE_OFFSET		;
+#else
 	. = LOAD_OFFSET;
+#endif
 	_start = .;
 	__init_begin = .;
 	HEAD_TEXT_SECTION

@@ -25,8 +25,17 @@ unsigned long _copy_to_user(void __user *to, const void *from, unsigned long n)
 	might_fault();
 	if (likely(access_ok(VERIFY_WRITE, to, n))) {
 		kasan_check_read(from, n);
+#if 1
+		memcpy(to, from, n);
+		n = 0;
+#else
 		n = raw_copy_to_user(to, from, n);
-	}
+		if (n) {
+			printk("%s ret %d\n", __func__, n);
+		}
+#endif
+	} else
+		printk ("%s check fail\n", __func__);
 	return n;
 }
 EXPORT_SYMBOL(_copy_to_user);

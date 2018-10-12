@@ -18,13 +18,20 @@
 #ifndef __ASSEMBLY__
 
 typedef struct {
+#ifdef CONFIG_MMU
 	void *vdso;
+#else
+	unsigned long end_brk;
+#ifdef CONFIG_BINFMT_ELF_FDPIC
+	unsigned long exec_fdpic_loadmap;
+	unsigned long interp_fdpic_loadmap;
+#endif
+#endif
 #ifdef CONFIG_SMP
 	/* A local icache flush is needed before user execution can resume. */
 	cpumask_t icache_stale_mask;
 #endif
 } mm_context_t;
-
 #endif /* __ASSEMBLY__ */
 
 #endif /* _ASM_RISCV_MMU_H */

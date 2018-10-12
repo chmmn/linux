@@ -16,6 +16,13 @@
 
 #include <linux/types.h>
 
+#ifdef CONFIG_MACHINE_MODE
+void sbi_shutdown(void);
+void sbi_console_putchar(int ch);
+int sbi_console_getchar(void);
+void sbi_set_timer(uint64_t stime_value);
+
+#else
 #define SBI_SET_TIMER 0
 #define SBI_CONSOLE_PUTCHAR 1
 #define SBI_CONSOLE_GETCHAR 2
@@ -97,4 +104,5 @@ static inline void sbi_remote_sfence_vma_asid(const unsigned long *hart_mask,
 	SBI_CALL_1(SBI_REMOTE_SFENCE_VMA_ASID, hart_mask);
 }
 
+#endif
 #endif

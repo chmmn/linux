@@ -25,9 +25,9 @@ obj-y	+= time.o
 obj-y	+= traps.o
 obj-y	+= riscv_ksyms.o
 obj-y	+= stacktrace.o
-obj-y	+= vdso.o
+obj-$(CONFIG_VDSO)	+= vdso.o
 obj-y	+= cacheinfo.o
-obj-y	+= vdso/
+obj-$(CONFIG_VDSO)	+= vdso/
 
 CFLAGS_setup.o := -mcmodel=medany
 
@@ -40,5 +40,7 @@ obj-$(CONFIG_FUNCTION_TRACER)	+= mcount.o ftrace.o
 obj-$(CONFIG_DYNAMIC_FTRACE)	+= mcount-dyn.o
 
 obj-$(CONFIG_PERF_EVENTS)      += perf_event.o
+
+obj-$(CONFIG_MACHINE_MODE)     += htif.o
 
 clean:

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 Regents of the University of California
+ * Copyright (C) 2018 ZhangXinlin <zhangxinlin@gmail.com>
  *
  *   This program is free software; you can redistribute it and/or
  *   modify it under the terms of the GNU General Public License
@@ -14,6 +15,7 @@
 #ifndef _ASM_RISCV_TLB_H
 #define _ASM_RISCV_TLB_H
 
+#ifdef CONFIG_MMU
 struct mmu_gather;
 
 static void tlb_flush(struct mmu_gather *tlb);
@@ -24,5 +26,12 @@ static inline void tlb_flush(struct mmu_gather *tlb)
 {
 	flush_tlb_mm(tlb->mm);
 }
+
+#else /* CONFIG_MMU */
+
+#define tlb_flush(tlb) ((void)tlb)
+#include <asm-generic/tlb.h>
+
+#endif /* CONFIG_MMU */
 
 #endif /* _ASM_RISCV_TLB_H */

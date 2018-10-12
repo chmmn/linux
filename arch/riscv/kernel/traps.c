@@ -48,7 +48,7 @@ void die(struct pt_regs *regs, const char *str)
 	print_modules();
 	show_regs(regs);
 
-	ret = notify_die(DIE_OOPS, str, regs, 0, regs->scause, SIGSEGV);
+	ret = notify_die(DIE_OOPS, str, regs, 0, regs->cause, SIGSEGV);
 
 	bust_spinlocks(0);
 	add_taint(TAINT_DIE, LOCKDEP_NOW_UNRELIABLE);
@@ -70,7 +70,9 @@ void do_trap(struct pt_regs *regs, int signo, int code,
 	    && printk_ratelimit()) {
 		pr_info("%s[%d]: unhandled signal %d code 0x%x at 0x" REG_FMT,
 			tsk->comm, task_pid_nr(tsk), signo, code, addr);
+#ifdef CONFIG_MMU
 		print_vma_addr(KERN_CONT " in ", GET_IP(regs));
+#endif
 		pr_cont("\n");
 		show_regs(regs);
 	}
@@ -92,7 +94,7 @@ static void do_trap_error(struct pt_regs *regs, int signo, int code,
 #define DO_ERROR_INFO(name, signo, code, str)				\
 asmlinkage void name(struct pt_regs *regs)				\
 {									\
-	do_trap_error(regs, signo, code, regs->sepc, "Oops - " str);	\
+	do_trap_error(regs, signo, code, regs->epc, "Oops - " str);	\
 }
 
 DO_ERROR_INFO(do_trap_unknown,
@@ -124,12 +126,12 @@ asmlinkage void do_trap_break(struct pt_regs *regs)
 	if (!user_mode(regs)) {
 		enum bug_trap_type type;
 
-		type = report_bug(regs->sepc, regs);
+		type = report_bug(regs->epc, regs);
 		switch (type) {
 		case BUG_TRAP_TYPE_NONE:
 			break;
 		case BUG_TRAP_TYPE_WARN:
-			regs->sepc += sizeof(bug_insn_t);
+			regs->epc += sizeof(bug_insn_t);
 			return;
 		case BUG_TRAP_TYPE_BUG:
 			die(regs, "Kernel BUG");
@@ -137,7 +139,7 @@ asmlinkage void do_trap_break(struct pt_regs *regs)
 	}
 #endif /* CONFIG_GENERIC_BUG */
 
-	force_sig_fault(SIGTRAP, TRAP_BRKPT, (void __user *)(regs->sepc), current);
+	force_sig_fault(SIGTRAP, TRAP_BRKPT, (void __user *)(regs->epc), current);
 }
 
 #ifdef CONFIG_GENERIC_BUG
@@ -159,9 +161,17 @@ void __init trap_init(void)
 	 * Set sup0 scratch register to 0, indicating to exception vector
 	 * that we are presently executing in the kernel
 	 */
+#ifdef CONFIG_MACHINE_MODE
+	csr_write(mscratch, 0);
+	/* Set the exception vector address */
+	csr_write(mtvec, &handle_exception);
+	/* Enable all interrupts */
+	csr_write(mie, -1);
+#else
 	csr_write(sscratch, 0);
 	/* Set the exception vector address */
 	csr_write(stvec, &handle_exception);
 	/* Enable all interrupts */
 	csr_write(sie, -1);
+#endif
 }

@@ -12,9 +12,15 @@
 /*
  * Possible interrupt causes:
  */
+#ifdef CONFIG_MACHINE_MODE
+#define INTERRUPT_CAUSE_SOFTWARE    3
+#define INTERRUPT_CAUSE_TIMER       7
+#define INTERRUPT_CAUSE_EXTERNAL    11
+#else
 #define INTERRUPT_CAUSE_SOFTWARE    1
 #define INTERRUPT_CAUSE_TIMER       5
 #define INTERRUPT_CAUSE_EXTERNAL    9
+#endif
 
 /*
  * The high order bit of the trap cause register is always set for

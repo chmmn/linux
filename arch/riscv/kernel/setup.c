@@ -110,6 +110,7 @@ disable:
 }
 #endif /* CONFIG_BLK_DEV_INITRD */
 
+#ifdef CONFIG_MMU
 pgd_t swapper_pg_dir[PTRS_PER_PGD] __page_aligned_bss;
 pgd_t trampoline_pg_dir[PTRS_PER_PGD] __initdata __aligned(PAGE_SIZE);
 
@@ -117,6 +118,7 @@ pgd_t trampoline_pg_dir[PTRS_PER_PGD] __initdata __aligned(PAGE_SIZE);
 #define NUM_SWAPPER_PMDS ((uintptr_t)-PAGE_OFFSET >> PGDIR_SHIFT)
 pmd_t swapper_pmd[PTRS_PER_PMD*((-PAGE_OFFSET)/PGDIR_SIZE)] __page_aligned_bss;
 pmd_t trampoline_pmd[PTRS_PER_PGD] __initdata __aligned(PAGE_SIZE);
+#endif
 #endif
 
 asmlinkage void __init setup_vm(void)
@@ -129,6 +131,7 @@ asmlinkage void __init setup_vm(void)
 	va_pa_offset = PAGE_OFFSET - pa;
 	pfn_base = PFN_DOWN(pa);
 
+#ifdef CONFIG_MMU
 	/* Sanity check alignment and size */
 	BUG_ON((PAGE_OFFSET % PGDIR_SIZE) != 0);
 	BUG_ON((pa % (PAGE_SIZE * PTRS_PER_PTE)) != 0);
@@ -156,6 +159,7 @@ asmlinkage void __init setup_vm(void)
 		swapper_pg_dir[o] =
 			pfn_pgd(PFN_DOWN(pa + i * PGDIR_SIZE), prot);
 	}
+#endif
 #endif
 }
 
@@ -227,8 +231,9 @@ void __init setup_arch(char **cmdline_p)
 	setup_bootmem();
 	paging_init();
 	unflatten_device_tree();
+#ifdef CONFIG_SWIOTLB
 	swiotlb_init(1);
-
+#endif
 #ifdef CONFIG_SMP
 	setup_smp();
 #endif
@@ -239,4 +244,3 @@ void __init setup_arch(char **cmdline_p)
 
 	riscv_fill_hwcap();
 }
-

@@ -608,10 +608,13 @@ static int load_flat_file(struct linux_binprm *bprm,
 		}
 
 		realdatastart = textpos + ntohl(hdr->data_start);
+#ifdef CONFIG_RISCV
+		datapos = realdatastart;
+#else
 		datapos = ALIGN(realdatastart +
 				MAX_SHARED_LIBS * sizeof(u32),
 				FLAT_DATA_ALIGN);
-
+#endif
 		reloc = (u32 __user *)
 			(datapos + (ntohl(hdr->reloc_start) - text_len));
 		memp = textpos;

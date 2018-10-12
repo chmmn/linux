@@ -21,7 +21,9 @@
 
 #include <linux/types.h>
 
+#ifdef CONFIG_MMU
 extern void __iomem *ioremap(phys_addr_t offset, unsigned long size);
+#endif
 
 /*
  * The RISC-V ISA doesn't yet specify how to query or modify PMAs, so we can't
@@ -32,7 +34,9 @@ extern void __iomem *ioremap(phys_addr_t offset, unsigned long size);
 #define ioremap_wc(addr, size) ioremap((addr), (size))
 #define ioremap_wt(addr, size) ioremap((addr), (size))
 
+#ifdef CONFIG_MMU
 extern void iounmap(volatile void __iomem *addr);
+#endif
 
 /* Generic IO read/write.  These perform native-endian accesses. */
 #define __raw_writeb __raw_writeb

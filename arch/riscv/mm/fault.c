@@ -34,6 +34,7 @@
  * This routine handles page faults.  It determines the address and the
  * problem, and then passes it off to one of the appropriate routines.
  */
+#ifdef CONFIG_MMU
 asmlinkage void do_page_fault(struct pt_regs *regs)
 {
 	struct task_struct *tsk;
@@ -284,3 +285,8 @@ vmalloc_fault:
 		return;
 	}
 }
+#else
+asmlinkage void do_page_fault(struct pt_regs *regs)
+{
+}
+#endif

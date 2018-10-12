@@ -23,7 +23,11 @@ static inline cycles_t get_cycles_inline(void)
 	cycles_t n;
 
 	__asm__ __volatile__ (
+#ifdef CONFIG_MACHINE_MODE
+		"csrr %0, mcycle"
+#else
 		"rdtime %0"
+#endif
 		: "=r" (n));
 	return n;
 }
@@ -40,9 +44,15 @@ static inline uint64_t get_cycles64(void)
 	u32 lo, hi, tmp;
 	__asm__ __volatile__ (
 		"1:\n"
+#ifdef CONFIG_MACHINE_MODE
+		"csrr %0, mcycleh\n"
+		"csrr %1, mcycle\n"
+		"csrr %2, mcycleh\n"
+#else
 		"rdtimeh %0\n"
 		"rdtime %1\n"
 		"rdtimeh %2\n"
+#endif
 		"bne %0, %2, 1b"
 		: "=&r" (hi), "=&r" (lo), "=&r" (tmp));
 	return ((u64)hi << 32) | lo;

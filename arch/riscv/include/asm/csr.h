@@ -16,6 +16,32 @@
 
 #include <linux/const.h>
 
+#ifdef CONFIG_MACHINE_MODE
+#define SR_MIE	_AC(0x00000008, UL) /* Machine Interrupt Enable */
+#define SR_MPIE _AC(0x00000080, UL)
+#define SR_MPP _AC(0x00001800, UL)
+
+#define MIE_MTIE _AC(0x00000080, UL)
+#define MIP_MTIP _AC(0x00000080, UL)
+
+#define SR_SUM	_AC(0x00040000, UL) /* Supervisor may access User Memory */
+
+#define SR_FS           _AC(0x00006000, UL) /* Floating-point Status */
+#define SR_FS_OFF       _AC(0x00000000, UL)
+#define SR_FS_INITIAL   _AC(0x00002000, UL)
+#define SR_FS_CLEAN     _AC(0x00004000, UL)
+#define SR_FS_DIRTY     _AC(0x00006000, UL)
+
+#ifndef CONFIG_64BIT
+#define SR_SD   _AC(0x80000000, UL) /* FS/XS dirty */
+#else
+#define SR_SD   _AC(0x8000000000000000, UL) /* FS/XS dirty */
+#endif
+
+#define SR_xIE SR_MIE
+#define SR_xPP SR_MPP
+#define SR_xPIE SR_MPIE
+#else /* CONFIG_MACHINE_MODE */
 /* Status register flags */
 #define SR_SIE	_AC(0x00000002, UL) /* Supervisor Interrupt Enable */
 #define SR_SPIE	_AC(0x00000020, UL) /* Previous Supervisor IE */
@@ -55,6 +81,12 @@
 #define SIE_SSIE _AC(0x00000002, UL) /* Software Interrupt Enable */
 #define SIE_STIE _AC(0x00000020, UL) /* Timer Interrupt Enable */
 #define SIE_SEIE _AC(0x00000200, UL) /* External Interrupt Enable */
+
+#define SR_xIE SR_SIE
+#define SR_xPP SR_SPP
+#define SR_xPIE SR_SPIE
+
+#endif /* CONFIG_MACHINE_MODE */
 
 #define EXC_INST_MISALIGNED     0
 #define EXC_INST_ACCESS         1
@@ -127,6 +159,26 @@
 			      : : "rK" (__v)			\
 			      : "memory");			\
 })
+
+#else
+
+#ifdef CONFIG_MACHINE_MODE
+#define CSR_SCRATCH mscratch
+#define CSR_STATUS  mstatus
+#define CSR_EPC mepc
+#define CSR_BADADDR mbadaddr
+#define CSR_CAUSE mcause
+#define CSR_IE   mie
+#define CSR_TVEC mtvec
+#else
+#define CSR_SCRATCH sscratch
+#define CSR_STATUS  sstatus
+#define CSR_EPC sepc
+#define CSR_BADADDR sbadaddr
+#define CSR_CAUSE scause
+#define CSR_IE  sie
+#define CSR_TVEC stvec
+#endif
 
 #endif /* __ASSEMBLY__ */
 
